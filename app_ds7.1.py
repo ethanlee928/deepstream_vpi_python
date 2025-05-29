@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ################################################################################
-# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,27 +33,28 @@ from ctypes import (
     sizeof,
 )
 
-sys.path.append("../")
+sys.path.append('../')
 import gi
 
-gi.require_version("Gst", "1.0")
-import argparse
-import math
-
-import cupy as cp
-import numpy as np
-import pyds
-import vpi
-from cuda import cudart
+gi.require_version('Gst', '1.0')
 from gi.repository import GLib, Gst
-
+import math
 from common.bus_call import bus_call
 from common.FPS import PERF_DATA
+import pyds
+import argparse
+
+import numpy as np
+import cupy as cp
+import vpi
+from cuda import cudart
+
 
 nvbufsurface = CDLL("libnvbufsurface.so")
 
 max_planes = 4
 structure_padding = 4
+
 
 perf_data = None
 
@@ -64,11 +65,11 @@ PGIE_CLASS_ID_PERSON = 2
 PGIE_CLASS_ID_ROADSIGN = 3
 MUXER_OUTPUT_WIDTH = 1920
 MUXER_OUTPUT_HEIGHT = 1080
-MUXER_BATCH_TIMEOUT_USEC = 4000000
+MUXER_BATCH_TIMEOUT_USEC = 33000
 TILED_OUTPUT_WIDTH = 1920
 TILED_OUTPUT_HEIGHT = 1080
 GST_CAPS_FEATURES_NVMM = "memory:NVMM"
-pgie_classes_str = ["Vehicle", "TwoWheeler", "Person", "RoadSign"]
+pgie_classes_str= ["Vehicle", "TwoWheeler", "Person","RoadSign"]
 
 
 ##### EXPERIMENTAL #####
@@ -182,7 +183,6 @@ class NvBufSurface(Structure):
 
 ########################
 
-
 # tiler_sink_pad_buffer_probe  will extract metadata received on tiler src pad
 # and modify the frame buffer using cupy
 def tiler_sink_pad_buffer_probe(pad, info, u_data):
@@ -250,7 +250,7 @@ def cb_newpad(decodebin, decoder_src_pad, data):
 
     # Need to check if the pad created by the decodebin is for video and not
     # audio.
-    if gstname.find("video") != -1:
+    if (gstname.find("video") != -1):
         # Link the decodebin pad only if decodebin has picked nvidia
         # decoder plugin nvdec_*. We do this by checking if the pad caps contain
         # NVMM memory features.
@@ -270,9 +270,8 @@ def decodebin_child_added(child_proxy, Object, name, user_data):
 
     if "source" in name:
         source_element = child_proxy.get_by_name("source")
-        if source_element.find_property("drop-on-latency") != None:
+        if source_element.find_property('drop-on-latency') != None:
             Object.set_property("drop-on-latency", True)
-
 
 def create_source_bin(index, uri):
     print("Creating source bin")
@@ -309,7 +308,6 @@ def create_source_bin(index, uri):
         sys.stderr.write(" Failed to add ghost pad in source bin \n")
         return None
     return nbin
-
 
 def main(args):
     global perf_data
@@ -390,20 +388,15 @@ def main(args):
         print("Atleast one of the sources is live")
         streammux.set_property("live-source", 1)
 
-    streammux.set_property("width", 1920)
-    streammux.set_property("height", 1080)
-    streammux.set_property("batch-size", number_sources)
-    streammux.set_property("batched-push-timeout", 4000000)
-    pgie.set_property("config-file-path", "dstest_imagedata_cupy_config.txt")
+    streammux.set_property('width', 1920)
+    streammux.set_property('height', 1080)
+    streammux.set_property('batch-size', number_sources)
+    streammux.set_property('batched-push-timeout', MUXER_BATCH_TIMEOUT_USEC)
+    pgie.set_property('config-file-path', "dstest_imagedata_cupy_config_ds7.1.txt")
     pgie_batch_size = pgie.get_property("batch-size")
-    if pgie_batch_size != number_sources:
-        print(
-            "WARNING: Overriding infer-config batch-size",
-            pgie_batch_size,
-            " with number of sources ",
-            number_sources,
-            " \n",
-        )
+    if (pgie_batch_size != number_sources):
+        print("WARNING: Overriding infer-config batch-size", pgie_batch_size, " with number of sources ",
+              number_sources, " \n")
         pgie.set_property("batch-size", number_sources)
     tiler_rows = int(math.sqrt(number_sources))
     tiler_columns = int(math.ceil((1.0 * number_sources) / tiler_rows))
@@ -411,6 +404,9 @@ def main(args):
     tiler.set_property("columns", tiler_columns)
     tiler.set_property("width", TILED_OUTPUT_WIDTH)
     tiler.set_property("height", TILED_OUTPUT_HEIGHT)
+
+    sink.set_property("sync", 0)
+    sink.set_property("qos", 0)
 
     print("Adding elements to Pipeline \n")
     pipeline.add(pgie)
@@ -450,7 +446,7 @@ def main(args):
         print(i, ": ", source)
 
     print("Starting pipeline \n")
-    # start play back and listed to events
+    # start play back and listed to events		
     pipeline.set_state(Gst.State.PLAYING)
     try:
         loop.run()
@@ -460,13 +456,10 @@ def main(args):
     print("Exiting app\n")
     pipeline.set_state(Gst.State.NULL)
 
-
 def parse_args():
-    parser = argparse.ArgumentParser(
-        prog="deepstream_imagedata-multistream_cupy.py",
-        description="deepstream-imagedata-multistream-cupy takes multiple URI streams as input"
-        " and retrieves the image buffer from GPU as a cupy array for in-place modification",
-    )
+    parser = argparse.ArgumentParser(prog="deepstream_imagedata-multistream_cupy.py", 
+                description="deepstream-imagedata-multistream-cupy takes multiple URI streams as input" \
+                    " and retrieves the image buffer from GPU as a cupy array for in-place modification")
     parser.add_argument(
         "-i",
         "--input",
@@ -482,6 +475,6 @@ def parse_args():
     return stream_paths
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     stream_paths = parse_args()
     sys.exit(main(stream_paths))

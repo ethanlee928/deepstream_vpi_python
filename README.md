@@ -7,20 +7,29 @@ Raised the question on [NVIDIA forum](https://forums.developer.nvidia.com/t/deep
 ## Setup Details
 
 - Hardware: NVIDIA Orin NX
-- Jetpack Ver: 5.1.2 [L4T 35.4.1]
-- DeepStream Ver: 6.3
+- Jetpack Ver: 5.1.2 [L4T 35.4.1] / 6.2 [L4T 36.4.3] (super config)
+- DeepStream Ver: 6.3 / 7.1
 
 ## Docker
 
 ```bash
-docker build . -t deepstream-vpi
-docker run -it --rm --runtime nvidia -v ${PWD}:/app/ -w /app/ deepstream-vpi bash
+# DS6.3
+docker build . -t vpi:ds6.3
+docker run -it --rm --runtime nvidia -v ${PWD}:/app/ -w /app/ vpi:ds6.3 bash
+
+# DS7.1
+docker build . -t vpi:ds7.1 -f Dockerfile.ds7.1
+docker run -it --rm --runtime nvidia -v ${PWD}:/app/ -w /app/ vpi:ds6.3 bash
 ```
 
 ## Run Command
 
 ```bash
+# DS6.3
 python3 app.py -i file:///opt/nvidia/deepstream/deepstream/samples/streams/sample_1080p_h265.mp4
+
+# DS7.1
+python3 app_ds7.1.py -i file:///opt/nvidia/deepstream/deepstream/samples/streams/sample_1080p_h265.mp4
 ```
 
 ## CUDA Illegal Address Error
